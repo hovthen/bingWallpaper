@@ -1,0 +1,303 @@
+<html lang="cmn">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>必应美图 - Loading...</title>
+  <link rel="shortcut icon" href="https://hovthen.com/image/favicon">
+  <style>
+    body {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      margin: 0;
+      background-color: rgba(0, 0, 0, 0.8);
+      background-size: cover;
+      background-position: center;
+      cursor: none;
+    }
+
+    svg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      pointer-events: none;
+    }
+
+    .info {
+      position: absolute;
+      top: 50px;
+      left: 12vw;
+      color: #fff;
+      width: 17vw;
+      min-width: 240px;
+      background: #0003;
+      min-height: 16vw;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc8;
+      border: 1px solid #fff2;
+      cursor: grab;
+    }
+
+    .info .date {
+      font-size: 20px;
+      margin-bottom: 20px
+    }
+
+    .info .date .date-year {
+      display: inline-block;
+      vertical-align: bottom;
+      padding-right: 10px;
+      line-height: 40px
+    }
+
+    .info .date .date-md {
+      display: inline-block;
+      vertical-align: top;
+      line-height: 50px;
+      font-size: 50px;
+      padding-left: 15px;
+      font-weight: bold;
+      border-left: 1px solid #fff5
+    }
+
+    .info .msg {
+      color: #fff;
+      font-size: 16px;
+      margin-top: 15px;
+      display: table;
+      /* min-height: 8vw; */
+      word-break: break-all
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    .gray-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 1);
+      background-size: 150% 150%;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 2s ease-in-out;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+  <script>
+    BINGAPI = 'https://api.hovthen.com/bing/';
+    lastTriggerTimestamp = new Date().getTime();
+    // 函数：处理按键事件
+    function handleKeyDown(event) {
+      $('body').css('cursor', 'auto');
+      var currentTimestamp = Date.now();
+      if (currentTimestamp - lastTriggerTimestamp >= 2000) {
+        if (event.code === "Space") {
+          randomImage();
+          event.preventDefault(); // 防止空格键滚动页面
+        } else if (event.code === "Enter") {
+          previousImage();
+          event.preventDefault(); // 防止默认行为
+        }
+        lastTriggerTimestamp = currentTimestamp;
+      }
+      $('body').css('cursor', 'none');
+    }
+  </script>
+</head>
+
+<body onkeydown="handleKeyDown(event);" onselectstart="return false;" oncopy="return false;">
+  <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 1 1">
+    <rect width="1" height="1" fill="rgba(0,0,0,0)"></rect>
+  </svg>
+  <div class="gray-overlay"></div>
+  <div class="info">
+    <div class="date">
+      <div class="date-year" id="dateYear"></div>
+      <div class="date-md">
+        <div id="dateMonth"></div>
+        <div id="dateDay"></div>
+      </div>
+    </div>
+    <a href="" id="learnMoreLink" class="msg"></a>
+  </div>
+
+
+
+  <script>
+    $(document).ready(function () {
+      Start();
+    });
+
+    // 函数：开始
+    function Start() {
+      triggerOverlay(0);
+      document.title = '必应美图 - Loading...';
+      // 获取URL中的参数
+      
+      if (localStorage.getItem('infoXY') !== null) {
+        var infoXY = JSON.parse(localStorage.getItem('infoXY'));
+        $('.info').css({
+          left: Math.max(40, Math.min($(window).width() - $('.info').width() * 1.5, infoXY[0])) + 'px',
+          top: Math.max(40, Math.min($(window).height() - $('.info').height() * 1.5, infoXY[1])) + 'px'
+        });
+      }
+      
+      var urlParams = new URLSearchParams(window.location.search);
+      var dateParam = urlParams.get('date');
+      var randomParam = urlParams.get('random');
+      // 构造API请求
+      if (randomParam !== null) {
+        apiUrl = BINGAPI + '?format=json&random';
+      } else if (dateParam !== null) {
+        apiUrl = BINGAPI + '?format=json&date=' + dateParam;
+      } else {
+        apiUrl = BINGAPI + '?format=json&date=today';
+      }
+      getImage(apiUrl);
+    }
+
+    // 函数：更新页面数据
+    function updatePage(data) {
+      document.title = '必应美图 - ' + data.copyright;
+      // 在页面加载时添加按键事件监听器
+      document.addEventListener('keydown', handleKeyDown);
+      document.body.addEventListener('selectstart', function (e) {
+        e.preventDefault();
+        return false;
+      });
+
+      document.body.addEventListener('copy', function (e) {
+        e.preventDefault();
+        return false;
+      });
+      var enddate = new Date(data.enddate);
+      var imageSize = (window.innerWidth > window.innerHeight) ? '1920x1080' : '720x1280';
+      var picUrl = 'https://www.bing.com' + data.urlbase + '_' + imageSize + '.jpg';
+      // 更新页面元素
+      triggerOverlay(1);
+
+      requestAnimationFrame(function () {
+        $('svg').css('opacity', 0.5);
+        setTimeout(function () {
+          $('svg').css('opacity', 1);
+        }, 4000);
+      });
+      requestAnimationFrame(function () {
+        setTimeout(function () {
+          $('svg').css('background-image', 'url("' + picUrl + '")');
+        }, 2000);
+      });
+
+      $('#dateYear').text(enddate.getFullYear().toString().slice(2, 4));
+      $('#dateMonth').text(('0' + (enddate.getMonth() + 1)).slice(-2));
+      $('#dateDay').text(('0' + enddate.getDate()).slice(-2));
+      $('.msg').text(data.copyright);
+      $('.msg').attr('href', data.copyrightlink);
+      document.addEventListener('click', function () {
+        enterFullScreen();
+      });
+      makeDraggable('.info');
+    }
+
+    function makeDraggable(elementSelector) {
+        var isDragging = false;
+        var offsetX, offsetY;
+        $(elementSelector).on('mousedown', function (e) {
+          isDragging = true;
+          offsetX = e.pageX - $(elementSelector).offset().left;
+          offsetY = e.pageY - $(elementSelector).offset().top;
+        });
+        $(document).on('mousemove', function (e) {
+          if (isDragging) {
+            var newX = e.pageX - offsetX;
+            var newY = e.pageY - offsetY;
+            // 限制元素不超出页面范围
+            newX = Math.max(40, Math.min($(window).width() - $(elementSelector).width() * 1.5, newX));
+            newY = Math.max(40, Math.min($(window).height() - $(elementSelector).height() * 1.5, newY));
+            $(elementSelector).css({
+              left: newX + 'px',
+              top: newY + 'px'
+            });
+            localStorage.setItem('infoXY', JSON.stringify([newX, newY]));
+          }
+        });
+
+        $(document).on('mouseup', function () {
+          isDragging = false;
+        });
+      }
+
+    // 函数：获取图片信息
+    function getImage(apiUrl) {
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          updatePage(data.images[0]);
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          getImage('https://www.bing.com/HPImageArchive.aspx?format=js&cc=us&idx=0&n=1&video=1');
+        });
+    }
+
+    // 函数：加载随机图片
+    function randomImage() {
+      getImage(BINGAPI + '?format=json&random');
+    }
+    // 函数：加载当前前一天图片
+    function previousImage() {
+      var date = '20' + $('#dateYear').text() + '-' + $('#dateMonth').text() + '-' + $('#dateDay').text();
+      var previousTime = Date.parse(date) - 86400000;
+      var previousDate = formatDate(previousTime);
+      getImage(BINGAPI + '?format=json&date=' + previousDate);
+    }
+
+    // 函数：格式化日期
+    function formatDate(dateStr) {
+      var date = new Date(dateStr);
+      var year = date.getFullYear();
+      var month = ('0' + (date.getMonth() + 1)).slice(-2);
+      var day = ('0' + date.getDate()).slice(-2);
+      return year + month + day;
+    }
+
+    function triggerOverlay(opacity) {
+      requestAnimationFrame(function () {
+        $('.gray-overlay').css('opacity', (opacity == 0 ? 0 : 0.8));
+        setTimeout(function () {
+          $('.gray-overlay').css('opacity', (opacity == 0 ? 0.8 : 0));
+        }, 2000);
+      });
+    }
+
+    function enterFullScreen() {
+      var element = document.documentElement; // 获取整个文档元素
+      if (element.requestFullscreen) {
+        element.requestFullscreen();
+      } else if (element.mozRequestFullScreen) { /* Firefox */
+        element.mozRequestFullScreen();
+      } else if (element.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+        element.webkitRequestFullscreen();
+      } else if (element.msRequestFullscreen) { /* IE/Edge */
+        element.msRequestFullscreen();
+      }
+    }
+  </script>
+</body>
+</html>
